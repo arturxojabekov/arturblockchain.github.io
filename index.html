@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blockchain Health Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        input,
+        button {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        #output {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Patient Data Platform</h1>
+
+    <button onclick="connectWallet()">🔗 Подключить MetaMask</button>
+
+    <h3>💾 Сохранить данные</h3>
+    <input type="text" id="dataInput" placeholder="Введите данные пациента">
+    <input type="text" id="categoryInput" placeholder="Введите категорию (например, диагноз)">
+    <button onclick="saveData()">Сохранить в блокчейн</button>
+
+    <h3>📄 Просмотр всех данных</h3>
+    <button onclick="loadData()">Показать данные</button>
+    <div id="output"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script>
+        const contractAddress = "0xC1052F1347F031dd3fEC59B34EF440f92409d1B7"; // Адрес твоего контракта
+        const contractABI = [ // ABI из твоего контракта
+            {
+                "inputs": [
+                    { "internalType": "string", "name": "data", "type": "string" },
+                    { "internalType": "string", "name": "category", "type": "string" }
+                ],
+                "name": "saveData",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getAllData",
+                "outputs": [
+                    {
+                        "components": [
+                            { "internalType": "string", "name": "data", "type": "string" },
+                            { "internalType": "string", "name": "category", "type": "string" },
+                            { "internalType": "address", "name": "sender", "type": "address" }
+                        ],
+                        "internalType": "struct DataStorage.Record[]",
+                        "name": "",
+                        "type": "tuple[]"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        let web3;
+        let contract;
+        let userAccount;
+
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    await ethereum.request({ method: "eth_requestAccounts" });
+                    web3 = new Web3(window.ethereum);
+                    const accounts = await web3.eth.getAccounts();
+                    userAccount = accounts[0];
+                    contract = new web3.eth.Contract(contractABI, contractAddress);
+                    alert("Подключено: " + userAccount);
+                } catch (err) {
+                    console.error("Ошибка подключения:", err);
+                }
+            } else {
+                alert("Установите MetaMask!");
+            }
+        }
+
+        async function saveData() {
+            const data = document.getElementById("dataInput").value;
+            const category = document.getElementById("categoryInput").value;
+            if (!contract || !userAccount) return alert("Сначала подключите MetaMask");
+
+            try {
+                await contract.methods.saveData(data, category).send({ from: userAccount });
+                alert("Данные сохранены в блокчейн");
+            } catch (err) {
+                console.error("Ошибка при сохранении:", err);
+            }
+        }
+
+        async function loadData() {
+            if (!contract) return alert("Сначала подключите MetaMask");
+
+            try {
+                const result = await contract.methods.getAllData().call();
+                let display = "";
+                result.forEach((item, index) => {
+                    display += `#${index + 1}\nДанные: ${item.data}\nКатегория: ${item.category}\nОтправитель: ${item.sender}\n\n`;
+                });
+                document.getElementById("output").textContent = display || "Нет данных";
+            } catch (err) {
+                console.error("Ошибка при загрузке:", err);
+            }
+        }
+    </script>
+</body>
+
+</html>
